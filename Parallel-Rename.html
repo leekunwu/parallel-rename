@@ -1,0 +1,1274 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Parallel Rename · 파일 이름 일괄 변경</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src blob: data:; media-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<style>
+.toolbar { display:flex; flex-wrap:wrap; gap:12px; align-items:stretch; margin-top:12px }
+.toolgroup { background:white; border:1px solid var(--line); border-radius:10px; padding:10px 14px }
+.toolgroup .bar { margin:6px 0 0 } .grouplabel { color:var(--muted); font-size:12px; font-weight:650 }
+.utility { margin-left:auto } .apply-actions { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap }
+#validation { margin:10px 0; padding:12px; border-radius:7px; background:#eef5f0 }
+#validation.error { background:#fff0f0 } #saveHint { margin:6px 0 }
+.insert { position:relative } .insert summary { list-style:none; background:white; border:1px solid #cbd2da; padding:6px 11px; border-radius:7px }
+.menu { position:absolute; z-index:5; top:calc(100% + 5px); min-width:170px; background:white; padding:6px; box-shadow:0 8px 25px #17243525; border:1px solid var(--line); border-radius:8px; display:grid; gap:5px }
+.menu button { text-align:left; border:0 } #folderSave:disabled { opacity:.5 }
+
+:root { color-scheme:light; --bg:#f5f6f8; --ink:#202730; --muted:#586472; --line:#dce1e6; --accent:#204d80; --soft:#eef4fb; --red:#972d32; --amber:#845c13; --radius:10px; font:14px/1.5 system-ui,-apple-system,"Malgun Gothic",sans-serif }
+* { box-sizing:border-box }
+body { margin:0; color:var(--ink); background:var(--bg) }
+header,main { max-width:1600px; margin:auto; padding:0 24px }
+header { padding-top:26px; padding-bottom:14px }
+h1,h2,h3,p { margin:0 }
+h1 { font-size:26px; letter-spacing:-.04em } h2 { font-size:17px } h3 { font-size:15px }
+fieldset { min-width:0; padding:0; margin:0; border:0 }
+button,input,textarea,select { font:inherit }
+button { color:var(--ink); background:white; border:1px solid #cbd2da; border-radius:7px; padding:6px 11px; cursor:pointer }
+button:hover:enabled { background:var(--soft) }
+button.primary { background:var(--accent); color:white; border-color:var(--accent); font-weight:650 }
+button.primary:hover:enabled { background:#16385f }
+button:disabled { opacity:.52; cursor:default }
+:focus-visible { outline:2px solid #2674b9; outline-offset:2px }
+.bar,.tools { display:flex; flex-wrap:wrap; align-items:center; gap:7px }
+.bar { margin:10px 0 } .tools { margin-top:5px; gap:3px }
+.tools button { padding:2px 6px; font-size:12px }
+.panel,dialog { background:white; border:1px solid var(--line); border-radius:var(--radius) }
+.panel { padding:16px; margin:12px 0 }
+.hint,.spec,small { color:var(--muted); font-size:12px }
+.status { margin-left:auto; font-variant-numeric:tabular-nums }
+.scroll { overflow:auto; max-height:60vh; border:1px solid var(--line); border-radius:7px }
+table { width:100%; border-spacing:0; text-align:left }
+td,th { padding:8px; border-bottom:1px solid var(--line); border-right:1px solid var(--line); vertical-align:top }
+th { position:sticky; top:0; z-index:1; background:#f3f5f7; font-weight:600 }
+#grid td,#grid th { min-width:134px }
+#grid .num { min-width:44px; width:44px; color:var(--muted) }
+#grid .fixed { min-width:75px }
+.drop { border:1px dashed #aab9ca; border-radius:5px; padding:8px; text-align:center; margin-top:8px; font-size:12px; font-weight:400 }
+.over { outline:2px solid var(--accent); outline-offset:-2px; background:var(--soft) }
+textarea { width:100%; min-width:125px; height:36px; padding:5px; resize:vertical; border:1px solid #d7dee6; border-radius:5px; background:#fff }
+.file,.result,.name,.spec { overflow-wrap:anywhere; white-space:pre-wrap }
+.file[draggable=true] { cursor:grab; background:var(--soft); border-radius:4px; padding:3px }
+.result { color:#205944 } .result.invalid,.error { color:var(--red) } .notice { color:var(--amber) }
+.spec { margin-top:4px } #formula { color:var(--accent); white-space:pre-wrap }
+details summary { cursor:pointer } .guide p { margin-top:7px }
+.log { background:#222933; color:#f1f3f7; padding:12px; border-radius:7px; white-space:pre-wrap; max-height:210px; overflow:auto }
+dialog { width:min(920px,96vw); max-height:90vh; padding:0; color:var(--ink) }
+dialog::backdrop { background:#17243560 } .dlg-head,.dlg-foot { padding:12px 16px; display:flex; gap:8px; align-items:center; background:white }
+.dlg-head { border-bottom:1px solid var(--line); justify-content:space-between }
+.dlg-foot { border-top:1px solid var(--line); justify-content:flex-end }
+.dlg-body { padding:12px 16px; max-height:calc(90vh - 124px); overflow:auto }
+.options { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; margin:8px 0 12px }
+.options input[type=text] { width:7em; padding:4px; border:1px solid var(--line); border-radius:4px }
+.entry { padding:9px 0; border-top:1px solid var(--line) }
+.entry p { margin-top:3px } #comparison { margin-top:8px }
+.name { font-family:ui-monospace,monospace }
+#feedback:empty { display:none } #feedback { padding:8px 0; color:var(--accent) }
+[hidden] { display:none!important }
+@media(max-width:600px) { header,main { padding-left:10px; padding-right:10px } .panel { padding:10px } .status { margin-left:0 } }
+
+/* Flat workspace, divided by lines instead of separate cards. */
+body { background:white }
+.toolbar { gap:0; padding:14px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line) }
+.toolgroup { border:0; border-radius:0; background:transparent; padding:0 18px }
+.toolgroup:first-child { padding-left:0 } .toolgroup + .toolgroup { border-left:1px solid var(--line) }
+.panel { border:0; border-radius:0; padding:20px 0; margin:0; border-bottom:1px solid var(--line); box-shadow:none }
+.scroll { border-radius:0 } #validation { padding:8px 0; border-radius:0; background:transparent }
+#validation.error { background:transparent }
+.log { background:#f5f6f8; color:var(--ink); border-radius:0; border-left:2px solid var(--line) }
+@media(max-width:650px) {
+.toolbar { gap:14px } .toolgroup,.toolgroup:first-child { padding:0; border:0!important }
+.utility { margin-left:0 } .panel { padding:16px 0 }
+}
+textarea:focus { min-height:52px } .file,.result,.entry,.log,#formula {overflow-wrap:anywhere} #grid .num {position:sticky;left:0;background:#f3f5f7;z-index:1} #grid th.num {z-index:2} #intake {padding:12px 0} .scroll:focus-within {scroll-padding-top:5rem}
+body{background:#f5f5f7;padding:24px 16px;color:#111827;font-family:Pretendard,-apple-system,system-ui,sans-serif;--accent:#111827;--soft:#f3f4f6;--line:#e5e7eb}
+.shell{background:white;max-width:1536px;margin:auto;border:1px solid var(--line);border-radius:14px;padding:20px clamp(10px,2vw,24px);box-shadow:0 8px 24px #0000000b}
+header,main{padding:0}header{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}header p{color:#6b7280;font-size:13px}button,.insert summary{border-radius:999px}#help{background:#4f46e5;color:white}.scroll{border-radius:12px}#grid{font-size:13px}#grid td{height:38px;padding:6px 9px;vertical-align:middle}#grid textarea[readonly]{pointer-events:none;border:0;resize:none;height:23px;min-height:0;background:transparent;color:inherit}#grid .picked{background:#e9eaed;box-shadow:inset 0 0 0 1px #11182744}#grid{user-select:none}#grid textarea{user-select:text}#rangeStatus{color:#586472}.toolbar{row-gap:10px}dialog{border-radius:14px}#helpBox p{margin:10px 0}
+.preview{min-width:180px;flex:1}.preview p{margin-top:6px}.toolbar{align-items:center}#grid th[draggable=true]{cursor:grab}#grid th[draggable=true]:active{cursor:grabbing}</style>
+</head>
+<body><div class="shell">
+<header><div><h1>Parallel Rename</h1><p>파일을 열별로 배치하고 같은 행에 사용할 이름을 구성하세요.</p></div><div><button id="help">Guide</button> <button id="version">v0.7</button></div></header>
+<main>
+<fieldset id="workspace">
+<div class="toolbar"><div class="toolgroup preview"><span class="grouplabel">이름 구성 미리보기</span><p id="formula"></p></div>
+<div class="toolgroup"><span class="grouplabel">파일 배치</span><div class="bar"><button id="addLane">＋ 파일 열</button><button id="order" aria-pressed="false">순서 변경: 꺼짐</button><button id="info">정보 가져오기</button></div></div>
+<div class="toolgroup"><span class="grouplabel">이름 구성</span><div class="bar"><button id="addNumber">＋ 순서 열</button><button id="addText">＋ 이름 열</button><details class="insert"><summary>＋ 구분자</summary><div class="menu"><button data-fixed=" ">공백</button><button data-fixed="_">언더스코어 _</button><button data-fixed="-">대시 -</button><button id="custom">직접 입력</button></div></details></div></div>
+<div class="toolgroup utility"><span class="grouplabel">작업 관리</span><div class="bar"><button id="undo" disabled>되돌리기</button><button id="redo" disabled>다시 실행</button><button id="demo">예시 불러오기</button><button id="clear">초기화</button></div></div>
+</div>
+
+<section class="panel">
+<div class="bar"><h2>매트릭스</h2><span class="status hint" id="status"></span></div>
+<p class="hint" id="orderHint" hidden>같은 파일 열에서 드래그하세요. 빈 행은 해당 위치로 옮기고, 파일이 있는 행은 순서를 바꿉니다. ↑↓ 버튼으로도 이동할 수 있습니다.</p>
+<div class="scroll"><table id="grid" aria-label="파일 이름 편집 매트릭스"></table></div>
+<div class="bar"><button id="addRows">＋ 10행</button><span id="rangeStatus" aria-live="polite"></span><button id="copyRange" disabled>선택 복사</button><button id="copy">변경 계획 복사</button></div>
+</section>
+<section class="panel apply-panel">
+<h2>검토 및 저장</h2><p id="validation" aria-live="polite"></p>
+<div class="apply-actions"><div class="bar"><button id="review">오류 확인·교정</button></div><div class="bar"><button id="apply">파일별 다운로드</button><button class="primary" id="folderSave">폴더에 사본 저장</button></div></div>
+<p id="saveHint" class="hint"></p>
+<p class="hint">모든 처리는 이 브라우저 안에서 진행됩니다. 결과 폴더 안에서 파일 열의 헤더명이 하위 폴더명이 됩니다.</p>
+</section>
+</fieldset>
+<p id="feedback" role="status"></p>
+<section class="panel"><div class="bar"><h2>처리 로그</h2><button id="saveLog">로그 저장</button></div><div id="log" class="log">준비되었습니다.</div></section>
+
+</main></div>
+<dialog id="setDialog" aria-labelledby="setTitle"><div class="dlg-head"><h2 id="setTitle">파일 세트 가져오기</h2></div><div class="dlg-body"><p id="setCount"></p><p>바꾸면 기존 파일 열 전체가 새 세트 하나로 교체됩니다. 입력한 이름은 유지됩니다.</p></div><div class="dlg-foot"><button id="cancelSet">취소</button><button id="replaceSet">바꾸기</button><button id="appendSet" autofocus class="primary">추가</button></div></dialog>
+<dialog id="corrections" aria-labelledby="dialogTitle">
+<div class="dlg-head"><h2 id="dialogTitle">오류 확인 및 자동 교정</h2><button id="closeDialog">닫기</button></div>
+<div class="dlg-body">
+<h3>교정 옵션</h3>
+<div class="options">
+<label><input id="stripExt" type="checkbox"> 이름 끝에 입력한 원본 확장자 한 번 제거</label><label>금지 문자 대체 <input id="replacement" type="text" value="_"></label>
+<label><input id="spacing" type="checkbox" checked> 셀 내부 탭·줄바꿈 → 공백</label>
+<label><input id="trimSpace" type="checkbox" checked> 기본 이름 끝 공백 제거</label>
+<label><input id="trimDot" type="checkbox" checked> 기본 이름 끝 점 제거</label>
+</div>
+<p class="hint">대체 내용을 비우면 금지 문자를 제거합니다. 끝 정리 기준은 반영 후 셀을 편집할 때도 적용됩니다.</p>
+<p id="optionError" class="error" role="status"></p>
+<div id="comparison"></div>
+</div>
+<div class="dlg-foot"><button id="cancelFix">취소</button><button id="commitFix" class="primary">교정 반영</button></div>
+</dialog>
+<dialog id="helpBox"><div class="dlg-head"><h2>사용 가이드</h2><form method="dialog"><button>닫기</button></form></div><div class="dlg-body"><h3>파일 세트 가져오기</h3><p>파일을 창에 놓으세요. 두 번째 세트부터 추가를 누르면 새 파일 열이 생깁니다. 바꾸기는 기존 파일 열 전체를 교체합니다.</p><h3>열 순서와 실행 취소</h3><p>열 제목을 드래그해 순서를 바꾸고, 더블클릭해 이름을 바꾸세요. 파일 열끼리, 이름 구성 열끼리 이동합니다. 되돌리기 ⌘/Ctrl+Z, 다시 실행 ⌘/Ctrl+Shift+Z를 지원합니다. 텍스트 입력 중에는 브라우저 기본 텍스트 실행 취소가 적용됩니다.</p><h3>선택과 편집</h3><p>클릭하거나 드래그해 셀을 선택하세요. 열 제목은 열 전체, 행 번호는 행 전체, 왼쪽 위는 표 전체를 선택합니다. ⌘/Ctrl+C는 선택한 값을 복사합니다. 이름 셀은 더블클릭 또는 Enter로 편집하고 Esc로 선택 상태에 돌아갑니다. 파일 순서 변경 중에는 파일을 드래그해 이동합니다.</p><h3>이름 구성과 저장</h3>
+<p>파일을 가져온 순서는 브라우저가 전달한 순서입니다. 각 파일 열의 순서를 직접 확인하세요. 순서 변경 모드에서는 개별 파일을 목록에서 뺄 수 있습니다.</p>
+<p>Tab은 오른쪽 이름 셀, Enter는 아래 이름 셀로 이동합니다. Shift+Tab은 왼쪽으로 이동합니다. Shift+Enter는 줄바꿈입니다. 이름 셀을 선택하고 엑셀 범위를 붙여넣으세요. 고정 열을 건너뛰며 따옴표로 감싼 셀의 탭과 줄바꿈을 보존합니다. 범위가 부족하면 행이나 이름 열을 먼저 추가하세요.</p>
+<p>마지막 점부터 확장자를 보존합니다. .env는 확장자가 없는 이름으로 취급합니다. 자동 교정에서 ␣는 공백, ⇥는 탭, ↵는 줄바꿈을 나타냅니다.</p>
+<p>기본 이름 끝 공백·점은 선택해서 정리할 수 있습니다. 확장자를 붙인 최종 이름의 끝 공백·점, 금지 문자, 예약 이름, 빈 이름, 중복은 적용을 차단합니다. 같은 폴더 안의 이름은 대소문자와 유니코드 정규화 차이까지 비교합니다.</p>
+<p>저장할 파일의 용량·개수에 도구가 정한 상한은 없습니다. 폴더 저장은 파일을 하나씩 스트리밍하며, 파일별 다운로드는 각 원본 파일을 새 이름으로 브라우저에 전달합니다. 여러 다운로드가 차단되면 브라우저에서 허용하세요.</p>
+<p>텍스트는 UTF-8로 읽고 줄바꿈을 LF로 통일합니다. 공백 제외 수치는 탭과 줄바꿈도 제외합니다. 오디오는 브라우저가 읽은 재생 시간을 초 단위로 내립니다. PNG·JPEG·GIF의 픽셀 크기, PNG pHYs·JPEG JFIF의 물리 해상도를 읽습니다. 다른 해상도 메타데이터는 확인 불가로 표시합니다.</p>
+<p>페이지를 닫으면 작업이 종료됩니다.</p>
+</div></dialog><dialog id="versions"><div class="dlg-body"><h2>v0.7</h2><p>매트릭스 범위 선택·복사, 더블클릭 편집, 사용 가이드 추가</p><form method="dialog"><button>닫기</button></form></div></dialog><script>
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = value => String(value ?? '').replace(/[&<>"']/g, char => (
+  { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]
+));
+function visible(value) {
+  return String(value).replace(/[ \t\r\n\x00-\x1f]/g, char =>
+    ({ ' ':'␣','\t':'⇥','\n':'↵','\r':'↵' }[char] || '⟨U+' + char.charCodeAt(0).toString(16).padStart(4,'0') + '⟩')
+  );
+}
+
+let nextId = 0;
+const textColumn = (name, values = []) => ({ id:++nextId, type:'text', name, values });
+const fixedColumn = (name, value) => ({ id:++nextId, type:'fixed', name, value });
+const fileLane = name => ({ id:++nextId, name, files:[] });
+const fileItem = file => ({ id:++nextId, file, spec:'' });
+const defaultOptions = () => ({ replacement:'_', stripExt:false, spacing:true, trimSpace:true, trimDot:true });
+
+const encoder = new TextEncoder();
+const forbidden = /[<>:"/\\|?*\x00-\x1f]/;
+const reserved = /^(con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])$/i;
+let rows = 10;
+let cols = [textColumn('제목')];
+let lanes = [fileLane('파일 A')];
+let nextLane = 1;
+let cleanup = { trimSpace:false, trimDot:false };
+let preferences = defaultOptions();
+let ordering = false;
+let drag = null;
+let busy = '';
+let logs = [];
+let dirty = false;
+
+function extension(name) {
+  const index = name.lastIndexOf('.');
+  return index > 0 ? name.slice(index) : '';
+}
+function cellText(column, row) {
+  return column.type === 'fixed' ? column.value : column.type === 'number' ? String(row + 1).padStart(2,'0') : column.values[row] || '';
+}
+function cleanEnd(name, policy) {
+  let end = name.length;
+  while (end) {
+    const char = name[end - 1];
+    if (!(char === ' ' && policy.trimSpace || char === '.' && policy.trimDot)) break;
+    end--;
+  }
+  return name.slice(0, end);
+}
+function colLabel(column, index) {
+  return column.name + ' (' + (index + 1) + '열' + (column.type === 'fixed' ? ' · 고정' : '') + ')';
+}
+function invalidChars(text, source) {
+  const issues = [];
+  let position = 0;
+  for (const char of text) {
+    position++;
+    if (forbidden.test(char)) {
+      const type = /[\x00-\x1f]/.test(char) ? '제어 문자' : '금지 문자';
+      issues.push(source + ' · ' + position + '번째 문자 ' + visible(char) + ' (' + type + ')');
+    }
+  }
+  return issues;
+}
+function inspectBase(columns, row, policy) {
+  const values = columns.map(column => cellText(column, row));
+  const raw = values.join('');
+  const base = cleanEnd(raw, policy);
+  const errors = [];
+  const notes = [];
+  if (!base.trim()) errors.push('조합 결과 · 기본 이름이 비어 있거나 공백뿐입니다.');
+  values.forEach((value, i) => {
+    for (const issue of invalidChars(value,colLabel(columns[i],i))) errors.push(issue);
+  });
+  const tail = base.match(/[ .]+$/);
+  if (tail) {
+    const start = base.length - tail[0].length;
+    let offset = 0;
+    const origins = [];
+    values.forEach((value, i) => {
+      if (offset < base.length && offset + value.length > start && value) origins.push(colLabel(columns[i],i));
+      offset += value.length;
+    });
+    notes.push('조합 결과 · 기본 이름 ' + (Array.from(base.slice(0,start)).length + 1) +
+      '번째부터 끝 공백·점 ' + visible(tail[0]) + ' · 원인 ' + origins.join(', '));
+  }
+  return { raw, base, errors, notes };
+}
+
+// The matrix, correction preview, clipboard and archive all consume this same plan.
+function validate(columns = cols, policy = cleanup) {
+  const bases = new Map();
+  const plan = [];
+  const groups = new Map();
+  const rowExtensions = new Map();
+  for (const lane of lanes) lane.files.forEach((item,row) => {
+    if (!item) return;
+    if (!rowExtensions.has(row)) rowExtensions.set(row,new Set());
+    const ext = extension(item.file.name);
+    if (ext) rowExtensions.get(row).add(ext.toLowerCase());
+  });
+  for (const lane of lanes) {
+    lane.files.forEach((item, row) => {
+      if (!item) return;
+      if (!bases.has(row)) bases.set(row, inspectBase(columns, row, policy));
+      const inspected = bases.get(row);
+      const { raw, errors:shared } = inspected;
+      const notes = inspected.notes.slice();
+      let base = inspected.base;
+      const dot = base.lastIndexOf('.');
+      const suffix = dot < 0 ? '' : base.slice(dot);
+      if (suffix && rowExtensions.get(row).has(suffix.toLowerCase())) {
+        if (policy.stripExt) base = cleanEnd(base.slice(0,-suffix.length),policy);
+        else notes.push('입력 이름 끝의 ' + suffix + ' · 원본 확장자를 자동으로 붙입니다. 제거 여부를 선택하세요.');
+      }
+      const ext = extension(item.file.name);
+      const name = base + ext;
+      const errors = shared.concat(invalidChars(ext, '원본 확장자'));
+      if (policy.stripExt && !base.trim() && !shared.length) errors.push('확장자 정리 후 기본 이름이 비었습니다. 제목을 입력하세요.');
+      if (/[ .]$/.test(name)) {
+        errors.push('최종 파일명 · 마지막 문자 ' + visible(name.slice(-1)) +
+          (ext ? ' · 원인: 원본 확장자' : ' · 원인: 기본 이름'));
+      }
+      if (reserved.test(name.split('.')[0].replace(/ +$/,''))) errors.push('조합 결과 · Windows 예약 이름');
+
+      const entry = { item, row, lane, name, raw, base, ext, errors, notes };
+      plan.push(entry);
+      const key = (lane.name + '/' + name).normalize('NFC').toLowerCase();
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(entry);
+    });
+  }
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const positions = group.slice(0, 3).map(place).join(', ') +
+      (group.length > 3 ? ' 외 ' + (group.length - 3) + '개' : '');
+    for (const entry of group) entry.errors.push('최종 파일명 중복 · ' + positions);
+  }
+  const invalid = plan.filter(p => p.errors.length);
+  const noted = plan.filter(p => p.notes.length);
+  const errorCount = invalid.reduce((sum,p) => sum + p.errors.length, 0);
+  const size = plan.reduce((sum,p) => sum + p.item.file.size, 0);
+
+  return { plan, invalid, noted, errorCount, size };
+}
+function place(p) { return p.lane.name + ' · ' + (p.row + 1) + '행'; }
+function totals(entries) {
+  return '이름 ' + new Set(entries.map(p => p.row)).size + '행 · 파일 ' + entries.length + '개';
+}
+function repairedCell(value, options) {
+  return value.replace(/\r\n|[<>:"/\\|?*\x00-\x1f]/g, char => {
+    if (/^[\r\n\t]+$/.test(char)) return options.spacing ? ' ' : char;
+    return options.replacement;
+  });
+}
+function simulate(options) {
+  if (forbidden.test(options.replacement)) throw new Error('대체 문자열의 금지 문자·제어 문자를 제거하세요.');
+  const before = validate();
+  const activeRows = [...new Set(before.plan.map(p => p.row))];
+  const changes = [];
+  const columns = cols.map((column, i) => {
+    const label = colLabel(column, i);
+    if (column.type === 'number') return { ...column };
+    if (column.type === 'fixed') {
+      const value = repairedCell(column.value, options);
+      if (value !== column.value) changes.push({ label, from:column.value, to:value, fixed:true });
+      return { ...column, value };
+    }
+    const values = column.values.slice();
+    for (const row of activeRows) {
+      const old = values[row] || '';
+      const value = repairedCell(old, options);
+      if (value !== old) {
+        changes.push({ label, row, from:old, to:value });
+        values[row] = value;
+      }
+    }
+    return { ...column, values };
+  });
+  const policy = { stripExt:options.stripExt, trimSpace:options.trimSpace, trimDot:options.trimDot };
+  const after = validate(columns, policy);
+  const pairs = before.plan.map((old, i) => ({ old, next:after.plan[i] }));
+  return { before, after, columns, policy, changes, pairs };
+}
+
+// Parse a complete rectangle before modifying any cell. LF inside a quoted field is data.
+function parseExcel(text) {
+  text = text.replace(/\r\n?/g, '\n');
+  const records = [];
+  let fields = [], field = '', quoted = false, closed = false;
+  function finishField() { fields.push(field); field = ''; closed = false; }
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (quoted) {
+      if (char !== '"') field += char;
+      else if (text[i + 1] === '"') { field += '"'; i++; }
+      else { quoted = false; closed = true; }
+      continue;
+    }
+    if (char === '\t') finishField();
+    else if (char === '\n') { finishField(); records.push(fields); fields = []; }
+    else if (closed) throw new Error('닫는 따옴표 뒤의 값을 확인하세요. 붙여넣기를 취소했습니다.');
+    else if (char === '"' && !field) quoted = true;
+    else field += char;
+  }
+  if (quoted) throw new Error('닫히지 않은 따옴표가 있어 붙여넣기를 취소했습니다.');
+  if (!text.endsWith('\n') || fields.length || closed || field) {
+    finishField();
+    records.push(fields);
+  }
+  return records;
+}
+function pasteRange(columnId, row, text) {
+  const records = parseExcel(text);
+  const editable = cols.filter(c => c.type === 'text');
+  const start = editable.findIndex(c => c.id === columnId);
+  if (start < 0 || records.some(record => record.length > editable.length - start)) {
+    throw new Error('이름 열이 부족합니다. 열을 추가한 뒤 다시 붙여넣으세요.');
+  }
+  if (row + records.length > rows) throw new Error('행이 부족합니다. 행을 추가한 뒤 다시 붙여넣으세요.');
+  records.forEach((record, j) => record.forEach((value, k) => editable[start+k].values[row+j] = value));
+  return records.length;
+}
+function changeOrder(lane, from, to) {
+  if (!lane || !lane.files[from] || to < 0 || to >= rows || from === to) return;
+  if (lane.files[to]) {
+    const [item] = lane.files.splice(from,1);
+    lane.files.splice(to,0,item);
+  } else {
+    lane.files[to] = lane.files[from];
+    lane.files[from] = null;
+  }
+  while (lane.files.length && !lane.files[lane.files.length - 1]) lane.files.pop();
+}
+function say(message) { $('feedback').textContent = message; }
+function logLines(lines) {
+  const time = new Date().toLocaleTimeString();
+  for (const line of lines) logs.push(time + '  ' + line);
+  $('log').textContent = logs.join('\n');
+  $('log').scrollTop = $('log').scrollHeight;
+}
+function button(action, value, label, disabled = false) {
+  const movement = {left:'열을 왼쪽으로 이동',right:'열을 오른쪽으로 이동',up:'파일을 위로 이동',down:'파일을 아래로 이동'};
+  const aria = movement[action] ? ' aria-label="' + movement[action] + '"' : '';
+  return '<button type="button"' + aria + ' data-action="' + action + '" data-value="' + value + '"' +
+    (disabled ? ' disabled' : '') + '>' + label + '</button>';
+}
+function render() {
+  resetRange();
+  $('formula').textContent = cols.map(c => c.type === 'fixed' ?
+    (visible(c.value) || '빈 구분자') : '[' + c.name + ']').join(' + ') || '이름 열을 추가하세요.';
+  $('order').textContent = '순서 변경: ' + (ordering ? '켜짐' : '꺼짐');
+  $('order').setAttribute('aria-pressed', String(ordering));
+  $('orderHint').hidden = !ordering;
+  const header = ['<th class="num" scope="col">행</th>'];
+  for (const lane of lanes) {
+    header.push('<th scope="col" draggable="true" data-lane-head="' + lane.id + '">' + esc(lane.name) + '<div class="tools">' +
+      button('choose',lane.id,'파일 가져오기') + button('renameLane',lane.id,'헤더명') + button('removeLane',lane.id,'열 제거') + '</div>' +
+      '<div class="drop" data-drop="' + lane.id + '">여기에 파일 드롭</div></th>');
+  }
+  cols.forEach((c,i) => {
+    const fixed = c.type === 'fixed';
+    header.push('<th scope="col" draggable="true" data-name-head="' + c.id + '"' + (fixed ? ' class="fixed"' : '') + '>' + esc(c.name) +
+      '<details><summary>열 설정</summary><div class="tools">' + button('left',c.id,'←',i === 0) +
+      button('right',c.id,'→',i === cols.length - 1) + button('renameCol',c.id,'열 이름') +
+      (fixed ? button('editFixed',c.id,'값') : '') + button('removeCol',c.id,'제거') + '</div></details></th>');
+  });
+  header.push('<th scope="col">변경 후 파일명</th>');
+  const body = [];
+  for (let r = 0; r < rows; r++) {
+    const cells = ['<td class="num">' + (r + 1) + '</td>'];
+    for (const lane of lanes) {
+      const item = lane.files[r];
+      const key = lane.id + ':' + r;
+      cells.push('<td data-slot="' + key + '">' + (item ?
+        '<div class="file" draggable="' + ordering + '" data-file="' + key + '">' +
+        esc(item.file.name) + '</div>' + (ordering ? '<div class="tools">' +
+        button('up',key,'↑',r === 0) + button('down',key,'↓',r === rows - 1) +
+        button('removeFile',key,'목록에서 빼기') + '</div>' : '') +
+        '<div class="spec">' + esc(item.spec) + '</div>' : '<small>—</small>') + '</td>');
+    }
+    for (const c of cols) {
+      // Assign textarea.value after insertion. HTML parsing would strip its first newline.
+      cells.push(c.type !== 'text' ? '<td class="fixed"><small>' + esc(visible(cellText(c,r)) || '∅') + '</small></td>' :
+        '<td><textarea readonly tabindex="-1" rows="1" spellcheck="false" aria-label="' + esc(c.name + ' ' + (r+1) + '행') +
+        '" data-cell="' + c.id + ':' + r + '"></textarea></td>');
+    }
+    cells.push('<td data-results="' + r + '"></td>');
+    body.push('<tr>' + cells.join('') + '</tr>');
+  }
+  $('grid').innerHTML = '<thead><tr>' + header.join('') + '</tr></thead><tbody>' + body.join('') + '</tbody>';
+  const columns = new Map(cols.map(c => [c.id,c]));
+  for (const input of $('grid').querySelectorAll('[data-cell]')) {
+    const [id,r] = input.dataset.cell.split(':').map(Number);
+    input.value = cellText(columns.get(id),r);
+  }
+  update();
+}
+let scheduledUpdate = 0;
+function scheduleUpdate() {
+  if (scheduledUpdate) return;
+  scheduledUpdate = requestAnimationFrame(() => { scheduledUpdate = 0; update(); });
+}
+function update() {
+  remember();
+  const result = validate();
+  const byRow = new Map();
+  for (const entry of result.plan) {
+    if (!byRow.has(entry.row)) byRow.set(entry.row,[]);
+    byRow.get(entry.row).push('<div class="result' + (entry.errors.length ? ' invalid' : '') +
+      '" data-id="' + entry.item.id + '"><small>' + esc(entry.lane.name) + '/</small> ' + esc(entry.name) + '</div>');
+  }
+  for (const cell of $('grid').querySelectorAll('[data-results]')) {
+    const html = (byRow.get(Number(cell.dataset.results)) || []).join('');
+    if (cell._results !== html) { cell.innerHTML = html; cell._results = html; }
+  }
+  $('status').textContent = '파일 열 ' + lanes.length + '개 · ' + totals(result.plan);
+  const ready = result.plan.length > 0 && !result.invalid.length;
+  $('validation').textContent = !result.plan.length ? '파일을 가져와 이름을 입력하세요.' :
+    (result.invalid.length ? '수정 필요 · ' + totals(result.invalid) + ' · 문제 ' + result.errorCount + '건' :
+      '저장 준비 완료 · ' + totals(result.plan)) +
+    (result.noted.length ? ' · 정리 제안 ' + result.noted.length + '개 파일' : '');
+  $('validation').className = result.invalid.length ? 'error' : '';
+  const flatCollision = hasFlatCollision(result.plan);
+  $('apply').disabled = Boolean(busy || !ready || flatCollision);
+  $('folderSave').disabled = Boolean(busy || !ready || !folderSupported());
+  $('saveHint').textContent = folderSupported() ?
+    '폴더 저장은 파일을 하나씩 복제합니다. 총 용량·파일 수 제한 없이 처리합니다.' :
+    '현재 브라우저에서는 파일별 다운로드를 사용하세요. 여러 파일의 다운로드 허용이 필요할 수 있습니다.';
+  if (flatCollision) $('saveHint').textContent += ' 열 사이에 같은 이름이 있습니다. 열별 폴더 저장을 사용하거나 이름을 변경하세요.';
+  $('review').disabled = !result.plan.length;
+  $('review').textContent = '오류 확인·교정' + (result.errorCount || result.noted.length ? ' (오류 ' + result.errorCount + '건 · 제안 ' + result.noted.length + '파일)' : '');
+  $('info').disabled = $('copy').disabled = !result.plan.length;
+}
+function laneById(id) { return lanes.find(l => l.id === id); }
+function addFiles(id, files) {
+  const lane = laneById(id);
+  if (busy || !lane || !files.length) return;
+  for (const file of files) lane.files.push(fileItem(file));
+  rows = Math.max(rows, lane.files.length);
+  dirty = true;
+  logLines([lane.name + '에 파일 ' + files.length + '개 추가']);
+  render();
+}
+function hasFlatCollision(plan) {
+  return new Set(plan.map(p => p.name.normalize('NFC').toLowerCase())).size !== plan.length;
+}
+let incoming = null;
+function receiveSet(files, id) {
+  if (busy || incoming || $('corrections').open || !files.length) return;
+  const batch = Array.from(files);
+  if (!lanes.some(l => l.files.some(Boolean))) {
+    if (!lanes.length) lanes.push(fileLane(labelForLane(nextLane++)));
+    addFiles((laneById(id) || lanes[0]).id,batch);
+    return;
+  }
+  incoming = batch;
+  $('setCount').textContent = '새 파일 ' + batch.length + '개 · 기존 파일 열 ' + lanes.length + '개';
+  $('setDialog').showModal();
+  $('appendSet').focus();
+}
+function finishSet(replace) {
+  if (!incoming || busy) return;
+  const files = incoming;
+  incoming = null;
+  $('setDialog').close();
+  if (replace) { lanes = []; nextLane = 0; }
+  let name;
+  do { name = labelForLane(nextLane++); } while (lanes.some(l => l.name.toLowerCase() === name.toLowerCase()));
+  const lane = fileLane(name);
+  lanes.push(lane);
+  addFiles(lane.id,files);
+}
+function choose(id) {
+  const picker = document.createElement('input');
+  picker.type = 'file';
+  picker.multiple = true;
+  picker.onchange = () => receiveSet(picker.files,id);
+  picker.click();
+}
+function labelForLane(index) {
+  let label = '';
+  for (let n = index + 1; n > 0; n = Math.floor((n - 1) / 26)) label = String.fromCharCode(65 + (n - 1) % 26) + label;
+  return '파일 ' + label;
+}
+function matrixAction(action, value) {
+  const [id,row] = value.split(':').map(Number);
+  const lane = laneById(id);
+  const idx = cols.findIndex(c => c.id === id);
+  const c = cols[idx];
+  switch (action) {
+    case 'renameLane': {
+      const name = prompt('이 열의 저장 폴더 이름',lane.name);
+      if (name === null) return;
+      if (!name.trim() || forbidden.test(name) || /[ .]$/.test(name) || reserved.test(name.split('.')[0].trimEnd()) ||
+          lanes.some(other => other !== lane && other.name.normalize('NFC').toLowerCase() === name.normalize('NFC').toLowerCase())) {
+        say('다른 열과 겹치지 않는 유효한 폴더 이름을 입력하세요.'); return;
+      }
+      lane.name = name; break;
+    }
+    case 'choose': choose(id); return;
+    case 'removeLane':
+      if (!confirm(lane.name + '을 목록에서 제거할까요?')) return;
+      lanes = lanes.filter(l => l !== lane); break;
+    case 'removeFile':
+      if (!ordering || !confirm(lane.files[row].file.name + '을 이 행에서 뺄까요?')) return;
+      lane.files[row] = null;
+      while (lane.files.length && !lane.files[lane.files.length-1]) lane.files.pop();
+      break;
+    case 'up': case 'down':
+      if (!ordering) return;
+      changeOrder(lane,row,row + (action === 'up' ? -1 : 1)); break;
+    case 'left': case 'right': {
+      const target = idx + (action === 'left' ? -1 : 1);
+      if (target < 0 || target >= cols.length) return;
+      [cols[target],cols[idx]] = [cols[idx],cols[target]]; break;
+    }
+    case 'removeCol':
+      if (!confirm(c.name + ' 열을 제거할까요?')) return;
+      cols.splice(idx,1); break;
+    case 'editFixed': {
+      const value = prompt('모든 행에 넣을 문자열',c.value);
+      if (value == null) return;
+      c.value = value; break;
+    }
+    case 'renameCol': {
+      const name = prompt('열 이름',c.name);
+      if (!name?.trim()) return;
+      c.name = name.trim(); break;
+    }
+    default: return;
+  }
+  dirty = true;
+  render();
+}
+function reset(demo) {
+  if (dirty && !confirm(demo ? '현재 작업을 예시로 교체할까요?' : '현재 파일 목록과 이름 편집을 초기화할까요?')) return;
+  rows = demo ? 5 : 10;
+  ordering = false; drag = null;
+  cleanup = { trimSpace:false, trimDot:false };
+  preferences = defaultOptions();
+  cols = demo ? [textColumn('번호',['01','02','03']),fixedColumn('공백',' '),
+    textColumn('제목',['Introduction','Main Theme','Finale'])] : [textColumn('제목')];
+  lanes = demo ? ['txt','md'].map((ext,i) => {
+    const lane = fileLane(labelForLane(i));
+    lane.files = [1,2,3].map(n => fileItem(new File(['Example ' + n + '\n테스트 파일입니다.'],n + '.' + ext,{type:'text/plain'})));
+    return lane;
+  }) : [fileLane('파일 A')];
+  nextLane = lanes.length;
+  dirty = demo;
+  say('');
+  logLines([demo ? '예시 파일 6개를 불러왔습니다.' : '작업을 초기화했습니다.']);
+  render();
+}
+function setupMatrix() {
+  const grid = $('grid');
+  $('workspace').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b || b.disabled || busy) return;
+    if (b.dataset.action) return matrixAction(b.dataset.action,b.dataset.value);
+    if ('fixed' in b.dataset) {
+      b.closest('details')?.removeAttribute('open');
+      const value = b.dataset.fixed;
+      cols.push(fixedColumn(({ ' ':'공백','_':'언더스코어','-':'대시' })[value],value));
+    } else {
+      switch (b.id) {
+        case 'pickSet': choose(); return;
+        case 'addLane': {
+          let name;
+          do { name = labelForLane(nextLane++); } while (lanes.some(l => l.name.toLowerCase() === name.toLowerCase()));
+          lanes.push(fileLane(name)); break;
+        }
+        case 'addNumber': cols.push({id:++nextId,type:'number',name:'순서'}); break;
+        case 'addText': cols.push(textColumn('이름 ' + (cols.filter(c => c.type === 'text').length + 1))); break;
+        case 'custom': {
+          const value = prompt('고정 구분자를 입력하세요.');
+          if (value === null) return;
+          cols.push(fixedColumn('구분자',value)); break;
+        }
+        case 'order': ordering = !ordering; drag = null; render(); return;
+        case 'addRows': rows += 10; break;
+        case 'demo': reset(true); return;
+        case 'clear': reset(false); return;
+        case 'info': readSpecs(); return;
+        case 'copy': copyPlan(); return;
+        case 'review': openReview(); return;
+        case 'apply': applyPlan(); return;
+        case 'folderSave': saveToFolder(); return;
+        default: return;
+      }
+    }
+    dirty = true;
+    render();
+  });
+  grid.addEventListener('input', e => {
+    if (busy || !e.target.matches('[data-cell]')) return;
+    const [id,r] = e.target.dataset.cell.split(':').map(Number);
+    cols.find(c => c.id === id).values[r] = e.target.value;
+    dirty = true;
+    e.target.style.height = 'auto';
+    e.target.style.height = Math.min(e.target.scrollHeight + 2,160) + 'px';
+    scheduleUpdate();
+  });
+  grid.addEventListener('keydown', e => {
+    if (busy || !e.target.matches('[data-cell]') || e.isComposing || e.keyCode === 229) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key !== 'Tab' && e.key !== 'Enter') return;
+    if (e.key === 'Enter' && e.shiftKey) return;
+    const [id,row] = e.target.dataset.cell.split(':').map(Number);
+    const editable = cols.filter(c => c.type === 'text');
+    let index = editable.findIndex(c => c.id === id), targetRow = row;
+    if (e.key === 'Tab') {
+      index += e.shiftKey ? -1 : 1;
+      if (index >= editable.length) { index = 0; targetRow++; }
+      if (index < 0) { index = editable.length - 1; targetRow--; }
+    } else targetRow++;
+    if (targetRow < 0 || targetRow >= rows) {
+      if (e.key === 'Enter') { e.preventDefault(); $('addRows').focus(); }
+      return;
+    }
+    e.preventDefault();
+    const next = grid.querySelector('[data-cell="' + editable[index].id + ':' + targetRow + '"]');
+    next?.focus();
+    next?.select();
+  });
+  grid.addEventListener('paste', e => {
+    if (!e.target.matches('[data-cell]')) return;
+    if (busy) { e.preventDefault(); return; }
+    const text = e.clipboardData.getData('text/plain');
+    const fromTable = /<table[\s>]/i.test(e.clipboardData.getData('text/html'));
+    if (!/[\t\r\n]/.test(text) && !fromTable) return;
+    e.preventDefault();
+    const key = e.target.dataset.cell;
+    const [id,row] = key.split(':').map(Number);
+    try {
+      const count = pasteRange(id,row,text);
+      dirty = true;
+      render();
+      grid.querySelector('[data-cell="' + key + '"]').focus();
+      say(count + '행을 붙여넣었습니다.');
+    } catch (error) { say(error.message); }
+  });
+  grid.addEventListener('dragstart', e => {
+    const el = e.target.closest('[data-file]');
+    if (!el) return;
+    if (!ordering || busy) { e.preventDefault(); return; }
+    drag = el.dataset.file;
+    e.dataTransfer.setData('text/plain',drag);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  grid.addEventListener('dragover', e => {
+    const target = e.target.closest(drag && ordering ? '[data-slot]' : '[data-drop]');
+    if (!busy && target) { e.preventDefault(); target.classList.add('over'); }
+  });
+  grid.addEventListener('dragleave', e => e.target.closest('.over')?.classList.remove('over'));
+  grid.addEventListener('drop', e => {
+    e.preventDefault();
+    grid.querySelectorAll('.over').forEach(el => el.classList.remove('over'));
+    if (busy) { drag = null; return; }
+    const zone = e.target.closest('[data-drop]');
+    if (e.dataTransfer.files.length) return; // External files are handled once by the window listener.
+    const target = e.target.closest('[data-slot]');
+    if (!drag || !ordering || !target) return;
+    const [source,from] = drag.split(':').map(Number);
+    const [dest,to] = target.dataset.slot.split(':').map(Number);
+    drag = null;
+    if (source !== dest) return say('같은 파일 열 안에서 이동하세요.');
+    changeOrder(laneById(source),from,to);
+    dirty = true;
+    render();
+  });
+  document.addEventListener('dragend', () => {
+    drag = null;
+    grid.querySelectorAll('.over').forEach(el => el.classList.remove('over'));
+  });
+  window.addEventListener('dragover',e => e.preventDefault());
+  window.addEventListener('drop',e => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length) receiveSet(e.dataTransfer.files,Number(e.target.closest?.('[data-drop]')?.dataset.drop));
+  });
+  $('appendSet').onclick = () => finishSet(false);
+  $('replaceSet').onclick = () => finishSet(true);
+  $('cancelSet').onclick = () => $('setDialog').close();
+  $('setDialog').addEventListener('close',() => { incoming = null; });
+}
+let preview = null;
+let page = 0;
+const previewPageSize = 40;
+function formOptions() {
+  return { stripExt:$('stripExt').checked, replacement:$('replacement').value, spacing:$('spacing').checked,
+    trimSpace:$('trimSpace').checked, trimDot:$('trimDot').checked };
+}
+function openReview() {
+  if (busy) return;
+  $('replacement').value = preferences.replacement;
+  for (const id of ['stripExt','spacing','trimSpace','trimDot']) $(id).checked = preferences[id];
+  page = 0;
+  refreshPreview();
+  $('corrections').showModal();
+}
+function issueLines(entry) {
+  return entry.errors.map(s => '<p class="error">' + esc(s) + '</p>').join('') +
+    entry.notes.map(s => '<p class="notice">정리 제안 · ' + esc(s) + '</p>').join('');
+}
+function needsReview(entry) { return entry.errors.length > 0 || entry.notes.length > 0; }
+function changedPair(pair) {
+  return needsReview(pair.old) || needsReview(pair.next) || pair.old.name !== pair.next.name;
+}
+function computedSummary(result) {
+  const targets = result.pairs.filter(changedPair);
+  const resolved = targets.filter(pair => !needsReview(pair.next));
+  const remaining = targets.filter(pair => needsReview(pair.next));
+  const openRows = new Set(remaining.map(pair => pair.next.row));
+  const completeRows = new Set(resolved.map(pair => pair.next.row).filter(row => !openRows.has(row)));
+  return {
+    targets,
+    summary:'검토 대상 ' + totals(targets.map(pair => pair.old)) +
+      ' / 해결 ' + completeRows.size + '행 · 파일 ' + resolved.length + '개' +
+      ' / 남은 오류 ' + totals(result.after.invalid) +
+      (result.after.invalid.length ? ' · ' + place(result.after.invalid[0]) + ' · ' + result.after.invalid[0].errors[0] + ' — 해당 행의 이름 또는 순서를 수정하세요.' : '') +
+      (result.after.noted.length ? ' / 남은 정리 제안 ' + totals(result.after.noted) : '')
+  };
+}
+function refreshPreview() {
+  const options = formOptions();
+  try { preview = simulate(options); }
+  catch (error) {
+    preview = null;
+    $('comparison').textContent = '';
+    $('optionError').textContent = error.message;
+    $('commitFix').disabled = true;
+    return;
+  }
+  $('optionError').textContent = '';
+  $('commitFix').disabled = !(preview.changes.length || preview.policy.trimSpace !== cleanup.trimSpace ||
+    preview.policy.trimDot !== cleanup.trimDot || Object.keys(options).some(key => options[key] !== preferences[key]));
+  drawPreview();
+}
+function drawPreview() {
+  const { before, after, changes, pairs } = preview;
+  const { targets, summary } = computedSummary(preview);
+  const cellChanges = new Map();
+  const shared = [];
+  for (const change of changes) {
+    const line = esc(change.label + ' · ' + (visible(change.from) || '∅') + ' → ' + (visible(change.to) || '∅'));
+    if (change.fixed) shared.push('<p>' + line + ' · 전체 행에 반영 (현재 ' + totals(before.plan) + ')</p>');
+    else {
+      if (!cellChanges.has(change.row)) cellChanges.set(change.row,[]);
+      cellChanges.get(change.row).push('<p class="hint">셀 수정 · ' + line + '</p>');
+    }
+  }
+  const pages = Math.max(1,Math.ceil(targets.length / previewPageSize));
+  page = Math.min(page,pages - 1);
+  const html = ['<p><strong>교정 미리보기</strong></p><p>' + esc(summary) + '</p>' +
+    '<p class="hint">파일별 오류 ' + before.errorCount + '건 → ' + after.errorCount + '건 · ' +
+    '결과 이름 변경 ' + totals(pairs.filter(p => p.old.name !== p.next.name).map(p => p.next)) + '</p>'];
+  if (shared.length) html.push('<div class="entry"><strong>고정 구분자 수정</strong>' + shared.join('') + '</div>');
+  for (const { old, next } of targets.slice(page * previewPageSize,(page + 1) * previewPageSize)) {
+    html.push('<div class="entry"><strong>' + esc(place(old) + ' · ' + old.item.file.name) + '</strong>' +
+      '<p class="name">' + esc(visible(old.name) || '∅') + ' → ' + esc(visible(next.name) || '∅') + '</p>' +
+      issueLines(old) + (cellChanges.get(old.row) || []).join('') +
+      (next.raw !== next.base ? '<p class="hint">결과 이름 정리 · ' + esc(visible(next.raw)) +
+        ' → ' + esc(visible(next.base) || '∅') + '</p>' : '') +
+      (needsReview(next) ? '<p><strong>반영 후 확인</strong></p>' + issueLines(next) :
+        '<p class="result">반영 후 오류 없음</p>') +
+      (next.errors.some(e => e.includes('원본 확장자')) ?
+        '<p class="hint">이 확장자는 그대로 보존됩니다. 원본 파일의 확장자를 확인한 후 다시 가져오거나 해당 파일을 목록에서 빼세요.</p>' : '') +
+      '</div>');
+  }
+  if (!targets.length) html.push('<p class="entry">현재 파일명에 교정할 항목이 없습니다.</p>');
+  if (pages > 1) html.push('<div class="bar">' +
+    button('prevPage',0,'이전',page === 0) + '<span>' + (page+1) + ' / ' + pages + '</span>' +
+    button('nextPage',0,'다음',page === pages-1) + '</div>');
+  $('comparison').innerHTML = html.join('');
+}
+function setupReview() {
+  const dialog = $('corrections');
+  dialog.addEventListener('input', () => { page = 0; refreshPreview(); });
+  $('comparison').addEventListener('click', e => {
+    const b = e.target.closest('button[data-action]');
+    if (!b) return;
+    page += b.dataset.action === 'prevPage' ? -1 : 1;
+    drawPreview();
+    $('comparison').scrollIntoView({block:'start'});
+  });
+  $('closeDialog').onclick = $('cancelFix').onclick = () => dialog.close();
+  dialog.addEventListener('close', () => { preview = null; });
+  $('commitFix').onclick = () => {
+    if (busy || !preview || $('commitFix').disabled) return;
+    const options = formOptions();
+    const result = simulate(options);
+    cols = result.columns;
+    cleanup = result.policy;
+    preferences = options;
+    dirty = true;
+    const summary = '교정 반영 · ' + computedSummary(result).summary;
+    dialog.close();
+    render();
+    logLines([summary]);
+    say(summary);
+  };
+}
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  try { link.click(); }
+  finally { link.remove(); setTimeout(() => URL.revokeObjectURL(url),60000); }
+}
+async function withJob(label, work) {
+  if (busy) return;
+  busy = label;
+  drag = null;
+  $('workspace').disabled = true;
+  $('workspace').setAttribute('aria-busy','true');
+  say(label);
+  try { await work(); }
+  catch (error) {
+    const message = label + ' 실패 · ' + error.message;
+    say(message);
+    logLines([message]);
+  } finally {
+    busy = '';
+    $('workspace').disabled = false;
+    $('workspace').removeAttribute('aria-busy');
+    update();
+  }
+}
+async function copyPlan() {
+  await withJob('변경 계획 복사',async () => {
+    const records = validate().plan.map(p => [p.lane.name,p.row+1,p.item.file.name,p.name]);
+    const asTsv = value => {
+      const s = String(value);
+      return /["\t\r\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+    };
+    const text = [['파일 열','행','원래 이름','변경 후 이름'],...records].map(r => r.map(asTsv).join('\t')).join('\n');
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const area = document.createElement('textarea');
+      area.value = text;
+      document.body.append(area);
+      try {
+        area.select();
+        if (!document.execCommand('copy')) throw new Error('브라우저의 클립보드 권한을 확인하세요.');
+      } finally { area.remove(); }
+    }
+    say('변경 계획을 복사했습니다.');
+  });
+}
+
+function imageDimensions(bytes) {
+  const data = new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+  const at = (offset, string) => [...string].every((ch,i) => bytes[offset+i] === ch.charCodeAt(0));
+  let width, height, ppi = '확인 불가 (물리 해상도 기록을 확인할 수 없음)';
+  if (bytes.length >= 33 && at(0,'\x89PNG\r\n\x1a\n') && at(12,'IHDR') && data.getUint32(8) === 13) {
+    width = data.getUint32(16);
+    height = data.getUint32(20);
+    for (let i = 8; i+12 <= bytes.length;) {
+      const length = data.getUint32(i);
+      if (length > bytes.length-i-12) break;
+      if (at(i+4,'pHYs') && length === 9 && bytes[i+16] === 1) {
+        const x = data.getUint32(i+8), y = data.getUint32(i+12);
+        if (x && y) ppi = (x*.0254).toFixed(1) + ' × ' + (y*.0254).toFixed(1);
+        break;
+      }
+      i += 12+length;
+    }
+  } else if (bytes.length >= 13 && (at(0,'GIF87a') || at(0,'GIF89a'))) {
+    width = data.getUint16(6,true);
+    height = data.getUint16(8,true);
+  } else if (bytes[0] === 255 && bytes[1] === 216) {
+    ppi = '확인 불가 (JFIF 물리 해상도 없음 · EXIF 분석 미지원)';
+    for (let i = 2; i+3 < bytes.length;) {
+      if (bytes[i++] !== 255) break;
+      while (bytes[i] === 255) i++;
+      const tag = bytes[i++];
+      if (tag === 217 || tag === 218 || i+2 > bytes.length) break;
+      const n = data.getUint16(i);
+      if (n < 2 || i+n > bytes.length) break;
+      if (tag === 224 && n >= 16 && at(i+2,'JFIF\0')) {
+        const unit = bytes[i+9], x = data.getUint16(i+10), y = data.getUint16(i+12);
+        if (x && y && unit === 1) ppi = x + ' × ' + y;
+        if (x && y && unit === 2) ppi = (x*2.54).toFixed(1) + ' × ' + (y*2.54).toFixed(1);
+      }
+      if ([192,193,194,195,197,198,199,201,202,203,205,206,207].includes(tag) && n >= 8) {
+        height = data.getUint16(i+3);
+        width = data.getUint16(i+5);
+      }
+      i += n;
+    }
+  }
+  return width && height ? width + ' × ' + height + ' px\nPPI ' + ppi : '픽셀 크기·PPI 확인 불가 (미지원 또는 손상된 형식)';
+}
+function audioInfo(file) {
+  return new Promise(resolve => {
+    const player = document.createElement('audio');
+    const url = URL.createObjectURL(file);
+    const timer = setTimeout(() => finish('확인 불가 (시간 초과)'),12000);
+    function finish(value) {
+      clearTimeout(timer);
+      player.onerror = player.onloadedmetadata = null;
+      player.removeAttribute('src');
+      player.load();
+      URL.revokeObjectURL(url);
+      resolve('재생 시간 ' + value);
+    }
+    player.preload = 'metadata';
+    player.onloadedmetadata = () => {
+      const n = Math.floor(player.duration);
+      finish(Number.isFinite(n) && n >= 0 ?
+        [Math.floor(n/3600),Math.floor(n/60)%60,n%60].map(v => String(v).padStart(2,'0')).join(':') : '확인 불가');
+    };
+    player.onerror = () => finish('확인 불가 (브라우저 미지원 또는 읽기 실패)');
+    player.src = url;
+  });
+}
+const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('ko',{granularity:'grapheme'}) : null;
+function characters(text) {
+  if (/^[\x00-\x7f]*$/.test(text)) return text.length;
+  let count = 0;
+  for (const part of (segmenter ? segmenter.segment(text) : text)) count++;
+  return count;
+}
+async function textCounts(file) {
+  const reader = file.stream().getReader();
+  const decoder = new TextDecoder('utf-8',{fatal:true});
+  let pending = '', pendingCR = '', total = 0, nonspace = 0;
+  function consume(raw, final) {
+    raw = pendingCR + raw;
+    pendingCR = !final && raw.endsWith('\r') ? '\r' : '';
+    if (pendingCR) raw = raw.slice(0,-1);
+    const normalized = pending + raw.replace(/\r\n?/g,'\n');
+    pending = '';
+    for (const part of (segmenter ? segmenter.segment(normalized) : normalized)) {
+      const value = segmenter ? part.segment : part;
+      if (pending) { total++; if (!/^\s+$/.test(pending)) nonspace++; }
+      pending = value;
+    }
+    if (final && pending) { total++; if (!/^\s+$/.test(pending)) nonspace++; pending = ''; }
+  }
+  try {
+    while (true) {
+      const {value,done} = await reader.read();
+      if (done) { consume(decoder.decode(),true); break; }
+      consume(decoder.decode(value,{stream:true}),false);
+    }
+  } finally {
+    try { await reader.cancel(); } catch {}
+    reader.releaseLock();
+  }
+  return {total,nonspace};
+}
+async function fileSpec(file) {
+  const info = [file.size.toLocaleString() + ' bytes · ' + (file.size/1048576).toFixed(2) + ' MiB',
+    '형식 ' + (extension(file.name) || '확장자 없음') + ' / ' + (file.type || 'MIME 미기록')];
+  const ext = extension(file.name).toLowerCase();
+  try {
+    if (/\.(txt|md|csv|tsv|json|xml|html|css|js|srt|vtt|log)$/.test(ext)) {
+      const counts = await textCounts(file);
+      info.push('글자 수 ' + counts.total + ' / 공백 제외 ' + counts.nonspace);
+    } else if (file.type.startsWith('audio/') || /\.(wav|mp3|m4a|aac|flac|ogg|aiff|aif)$/.test(ext)) {
+      info.push(await audioInfo(file));
+    } else if (file.type.startsWith('image/') || /\.(png|jpg|jpeg|gif|webp)$/.test(ext)) {
+      info.push(imageDimensions(new Uint8Array(await file.arrayBuffer())));
+    }
+  } catch { info.push('상세 정보 확인 불가 (인코딩·형식 또는 파일 접근 상태 확인)'); }
+  return info.join('\n');
+}
+async function readSpecs() {
+  await withJob('정보 분석 중',async () => {
+    const { plan } = validate();
+    for (let i=0; i<plan.length; i++) {
+      if (i % 20 === 0) {
+        say('정보 분석 중 · 파일 ' + (i+1) + ' / ' + plan.length);
+        await new Promise(resolve => setTimeout(resolve,0));
+      }
+      plan[i].item.spec = await fileSpec(plan[i].item.file);
+    }
+    render();
+    const message = '정보 분석 완료 · ' + totals(plan);
+    say(message);
+    logLines([message]);
+  });
+}
+
+async function applyPlan() {
+  if (busy) return;
+  const { plan, invalid } = validate();
+  if (!plan.length || invalid.length || hasFlatCollision(plan)) { update(); return; }
+  if (!confirm(totals(plan) + '\n' +
+    '각 파일을 새 이름으로 다운로드할까요?\n여러 파일 다운로드를 브라우저에서 허용해야 할 수 있습니다.')) return;
+  await withJob('파일별 다운로드 중', async () => {
+    let requested = 0, failed = 0;
+    const entries = [];
+    for (const [index,p] of plan.entries()) {
+      try {
+        download(p.item.file,p.name);
+        requested++;
+        entries.push(place(p) + ' · ' + p.name + ' [다운로드 요청]');
+      } catch (error) {
+        failed++;
+        entries.push(place(p) + ' · ' + p.name + ' [요청 실패] ' + error.message);
+      }
+      say('다운로드 요청 중 · ' + (index+1) + ' / ' + plan.length);
+      await new Promise(resolve => setTimeout(resolve,0));
+    }
+    const summary = '파일별 다운로드 · 대상 ' + totals(plan) + ' · 요청 ' + requested +
+      '개 · 요청 실패 ' + failed + '개';
+    logLines([summary,...entries,'저장 완료와 브라우저 차단 여부는 다운로드 목록에서 확인하세요.']);
+    say(summary);
+  });
+}
+function folderSupported() {
+  return typeof window.showDirectoryPicker === 'function' && window.isSecureContext === true;
+}
+async function saveToFolder() {
+  if (busy) return;
+  const { plan, invalid } = validate();
+  if (!plan.length || invalid.length || !folderSupported()) return;
+  await withJob('폴더 저장 중', async () => {
+    let parent;
+    try { parent = await window.showDirectoryPicker({mode:'readwrite'}); }
+    catch (error) {
+      if (error.name === 'AbortError') { say('폴더 선택을 취소했습니다.'); return; }
+      throw error;
+    }
+    // A dedicated new directory keeps source files and existing destination names intact.
+    let directory, folderName;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      folderName = 'Renamed-' + Date.now() + '-' + crypto.randomUUID();
+      try {
+        await parent.getDirectoryHandle(folderName);
+      } catch (error) {
+        if (error.name !== 'NotFoundError') throw error;
+        directory = await parent.getDirectoryHandle(folderName,{create:true});
+        break;
+      }
+    }
+    if (!directory) throw new Error('새 결과 폴더를 만들지 못했습니다.');
+    const entries = [];
+    const folders = new Map();
+    let saved = 0, failed = 0;
+    for (const [index,p] of plan.entries()) {
+      say('폴더에 저장 중 · ' + (index+1) + ' / ' + plan.length);
+      try {
+        if (!folders.has(p.lane.id)) folders.set(p.lane.id,await directory.getDirectoryHandle(p.lane.name,{create:true}));
+        const folder = folders.get(p.lane.id);
+        try {
+          await folder.getFileHandle(p.name);
+          throw new Error('저장 경로에 같은 이름이 있어 건너뛰었습니다.');
+        } catch (error) { if (error.name !== 'NotFoundError') throw error; }
+        const handle = await folder.getFileHandle(p.name,{create:true});
+        const writable = await handle.createWritable();
+        // Streams avoid loading the complete batch into memory.
+        try { await p.item.file.stream().pipeTo(writable); }
+        catch (error) {
+          try { await writable.abort(); } catch {}
+          throw error;
+        }
+        saved++;
+        entries.push(place(p) + ' · ' + p.item.file.name + ' → ' + p.name + ' [저장 완료]');
+      } catch (error) {
+        failed++;
+        entries.push(place(p) + ' · ' + p.name + ' [실패] ' + error.message);
+      }
+    }
+    const summary = (failed ? (saved ? '일부 저장 실패 · ' : '전체 저장 실패 · ') : '폴더 저장 완료 · ') + totals(plan) + ' · 저장 ' + saved +
+      '개 · 실패 ' + failed + '개 · 결과 폴더 ' + parent.name + '/' + folderName;
+    logLines([summary,...entries]);
+    say(summary);
+  });
+}
+const history = [];
+let historyIndex = -1;
+let restoring = false;
+function snapshot() {
+  return {rows, cols:cols.map(c=>({...c,values:c.values?.slice()})), lanes:lanes.map(l=>({...l,files:l.files.map(f=>f?{...f}:f)})),nextId,nextLane,cleanup:{...cleanup},preferences:{...preferences}};
+}
+function signature(state) {
+  return JSON.stringify({...state,lanes:state.lanes.map(l=>({...l,files:l.files.map(f=>f?{id:f.id,spec:f.spec}:f)}))});
+}
+function remember() {
+  if(restoring)return;
+  const state=snapshot();
+  if(historyIndex>=0 && signature(history[historyIndex])===signature(state))return;
+  history.splice(historyIndex+1);
+  history.push(state);
+  if(history.length>100)history.shift();
+  historyIndex=history.length-1;
+  historyButtons();
+}
+function historyButtons() {
+  $('undo').disabled=historyIndex<=0;
+  $('redo').disabled=historyIndex>=history.length-1;
+}
+function restoreHistory(offset) {
+  if(busy || $('corrections').open || $('setDialog').open)return;
+  remember();
+  const index=historyIndex+offset;
+  if(index<0 || index>=history.length)return;
+  historyIndex=index;
+  const state=history[index];
+  rows=state.rows; cols=state.cols.map(c=>({...c,values:c.values?.slice()}));
+  lanes=state.lanes.map(l=>({...l,files:l.files.map(f=>f?{...f}:f)}));
+  nextId=state.nextId;nextLane=state.nextLane;
+  cleanup={...state.cleanup};preferences={...state.preferences};
+  dirty=true;restoring=true;render();restoring=false;historyButtons();
+}
+$('undo').onclick=()=>restoreHistory(-1);
+$('redo').onclick=()=>restoreHistory(1);
+document.addEventListener('keydown',e=>{
+  if(!(e.metaKey||e.ctrlKey) || e.key.toLowerCase()!=='z' || e.isComposing)return;
+  if(e.target.closest('input,textarea,[contenteditable=true]'))return;
+  e.preventDefault();restoreHistory(e.shiftKey?1:-1);
+});
+let movingHeader=null;
+$('grid').addEventListener('dragstart',e=>{
+  const head=e.target.closest('[data-lane-head],[data-name-head]');
+  if(!head || e.target.closest('button,details,.drop') || busy)return;
+  movingHeader={kind:head.dataset.laneHead?'lane':'name',id:Number(head.dataset.laneHead||head.dataset.nameHead)};
+  e.stopImmediatePropagation();e.dataTransfer.setData('text/plain',String(movingHeader.id));e.dataTransfer.effectAllowed='move';
+},true);
+$('grid').addEventListener('dragover',e=>{
+  if(!movingHeader)return;
+  e.preventDefault();e.stopImmediatePropagation();
+},true);
+$('grid').addEventListener('drop',e=>{
+  if(!movingHeader)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  const target=e.target.closest(movingHeader.kind==='lane'?'[data-lane-head]':'[data-name-head]');
+  if(target){
+    const list=movingHeader.kind==='lane'?lanes:cols;
+    const targetId=Number(target.dataset.laneHead||target.dataset.nameHead);
+    const from=list.findIndex(c=>c.id===movingHeader.id),to=list.findIndex(c=>c.id===targetId);
+    if(from>=0 && to>=0){const [item]=list.splice(from,1);list.splice(to,0,item);dirty=true;render();}
+  }
+  movingHeader=null;
+},true);
+$('grid').addEventListener('dragend',()=>movingHeader=null);
+const table = $('grid');
+table.tabIndex = 0;
+let anchor, focusCell, sweeping = false;
+function resetRange() {
+  anchor = focusCell = null;
+  sweeping = false;
+  $('rangeStatus').textContent = '';
+  $('copyRange').disabled = true;
+}
+function point(cell) { return [cell.parentNode.rowIndex, cell.cellIndex]; }
+function limits() {
+  return [Math.min(anchor[0],focusCell[0]),Math.max(anchor[0],focusCell[0]),Math.min(anchor[1],focusCell[1]),Math.max(anchor[1],focusCell[1])];
+}
+function mark(start,end) {
+  anchor=start; focusCell=end;
+  const [top,bottom,left,right]=limits();
+  for(const row of table.rows) for(const cell of row.cells) {
+    const [r,c]=point(cell);
+    cell.classList.toggle('picked',r>=top && r<=bottom && c>=left && c<=right);
+  }
+  $('rangeStatus').textContent=(bottom-top+1)+'행 × '+(right-left+1)+'열 선택';
+  $('copyRange').disabled=false;
+}
+table.onmousedown=e=>{
+  const cell=e.target.closest('td,th');
+  if(!cell || e.button!==0 || e.target.closest('button,details,.drop,textarea:not([readonly])') || (ordering && e.target.closest('[data-slot]'))) return;
+  const [r,c]=point(cell), last=table.rows.length-1, width=table.rows[0].cells.length-1;
+  if(!r || !c) mark([r||1,c||1],[r||last,c||width]);
+  else { mark(e.shiftKey && anchor ? anchor : [r,c],[r,c]); sweeping=true; }
+  if(r)e.preventDefault(); table.focus({preventScroll:true});
+};
+table.onmouseover=e=>{
+  const cell=e.target.closest('td');
+  if(sweeping && cell && cell.cellIndex) mark(anchor,point(cell));
+};
+window.addEventListener('mouseup',()=>sweeping=false);
+function editCell(cell) {
+  const input=cell?.querySelector('textarea');
+  if(input){input.readOnly=false;input.focus();input.select();}
+}
+table.ondblclick=e=>{
+  const head=e.target.closest('[data-lane-head],[data-name-head]');
+  if(head && !e.target.closest('button,details,.drop')){
+    matrixAction(head.dataset.laneHead?'renameLane':'renameCol',head.dataset.laneHead||head.dataset.nameHead);
+  }else editCell(e.target.closest('td'));
+};
+table.addEventListener('focusin',e=>{if(e.target.matches('textarea')) e.target.readOnly=false;});
+table.addEventListener('focusout',e=>{if(e.target.matches('textarea')) e.target.readOnly=true;});
+table.addEventListener('keydown',e=>{
+  if(e.isComposing || !focusCell)return;
+  if(e.target.matches('textarea')) {if(e.key==='Escape')table.focus();return;}
+  if(e.target!==table)return;
+  const [r,c]=focusCell;
+  if(e.key==='Enter'){e.preventDefault();editCell(table.rows[r].cells[c]);return;}
+  const step={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];
+  if(step){e.preventDefault();const next=[Math.max(1,Math.min(table.rows.length-1,r+step[0])),Math.max(1,Math.min(table.rows[0].cells.length-1,c+step[1]))];mark(e.shiftKey?anchor:next,next);table.rows[next[0]].cells[next[1]].scrollIntoView({block:'nearest',inline:'nearest'});}
+});
+function rangeText(){
+  const [top,bottom,left,right]=limits(), out=[];
+  for(let r=top;r<=bottom;r++){
+    const values=[];
+    for(let c=left;c<=right;c++){
+      const cell=table.rows[r].cells[c];
+      const value=cell.querySelector('textarea')?.value ?? (cell.hasAttribute('data-slot') ? cell.querySelector('.file')?.textContent || '' : cell.hasAttribute('data-results') ? Array.from(cell.querySelectorAll('.result'),el=>el.lastChild.textContent.trimStart()).join('\n') : cell.innerText);
+      values.push(/["\t\r\n]/.test(value)?'"'+value.replace(/"/g,'""')+'"':value);
+    }
+    out.push(values.join('\t'));
+  }
+  return out.join('\n');
+}
+table.addEventListener('paste',e=>{
+  if(e.target!==table || !focusCell || busy)return;
+  const input=table.rows[focusCell[0]].cells[focusCell[1]].querySelector('textarea');
+  e.preventDefault();
+  if(!input)return say('이름 열의 셀을 선택하세요.');
+  const [id,row]=input.dataset.cell.split(':').map(Number);
+  try{
+    const origin=focusCell.slice();
+    const count=pasteRange(id,row,e.clipboardData.getData('text/plain'));
+    dirty=true;render();mark(origin,origin);table.focus();say(count+'행을 붙여넣었습니다.');
+  }catch(error){say(error.message);}
+});
+table.oncopy=e=>{if(anchor && e.target===table){e.preventDefault();e.clipboardData.setData('text/plain',rangeText());}};
+$('copyRange').onclick=async()=>{if(!anchor)return;try{await navigator.clipboard.writeText(rangeText());}catch{table.focus();if(!document.execCommand('copy'))return say('선택 영역에서 Ctrl/Cmd+C를 누르세요.');}say('선택 영역을 복사했습니다.');};
+$('help').onclick=()=>$('helpBox').showModal();
+$('version').onclick=()=>$('versions').showModal();
+setupMatrix();
+setupReview();
+$('saveLog').onclick = () => download(new Blob([logs.join('\n')],{type:'text/plain;charset=utf-8'}),'rename-log.txt');
+render();
+</script></body></html>
