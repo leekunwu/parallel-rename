@@ -85,10 +85,11 @@ textarea:focus { min-height:52px } .file,.result,.entry,.log,#formula {overflow-
 body{background:#f5f5f7;padding:24px 16px;color:#111827;font-family:Pretendard,-apple-system,system-ui,sans-serif;--accent:#111827;--soft:#f3f4f6;--line:#e5e7eb}
 .shell{background:white;max-width:1536px;margin:auto;border:1px solid var(--line);border-radius:14px;padding:20px clamp(10px,2vw,24px);box-shadow:0 8px 24px #0000000b}
 header,main{padding:0}header{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}header p{color:#6b7280;font-size:13px}button,.insert summary{border-radius:999px}#help{background:#4f46e5;color:white}.scroll{border-radius:12px}#grid{font-size:13px}#grid td{height:38px;padding:6px 9px;vertical-align:middle}#grid textarea[readonly]{pointer-events:none;border:0;resize:none;height:23px;min-height:0;background:transparent;color:inherit}#grid .picked{background:#e9eaed;box-shadow:inset 0 0 0 1px #11182744}#grid{user-select:none}#grid textarea{user-select:text}#rangeStatus{color:#586472}.toolbar{row-gap:10px}dialog{border-radius:14px}#helpBox p{margin:10px 0}
-.preview{min-width:180px;flex:1}.preview p{margin-top:6px}.toolbar{align-items:center}#grid th[draggable=true]{cursor:grab}#grid th[draggable=true]:active{cursor:grabbing}</style>
+.preview{min-width:180px;flex:1}.preview p{margin-top:6px}.toolbar{align-items:center}#grid th[draggable=true]{cursor:grab}#grid th[draggable=true]:active{cursor:grabbing}.toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 20px}.toolbar .toolgroup{margin:0;padding:0;border:0}.toolbar .bar{margin-bottom:0}.grip{display:inline-block;padding:1px 6px;color:#596576;cursor:grab}#grid [data-slot]{background:#f1f5fa}#grid [data-lane-head]{background:#e2eaf4}#grid [data-results]{background:#f0f8f3;font-weight:550}#grid thead th:last-child{background:#deeee4}#grid .picked{outline:2px solid #566e92;outline-offset:-2px}#grid [data-insert=before]{box-shadow:inset 3px 0 #345ba3}#grid [data-insert=after]{box-shadow:inset -3px 0 #345ba3}@media(max-width:680px){.toolbar{grid-template-columns:1fr}}
+</style>
 </head>
 <body><div class="shell">
-<header><div><h1>Parallel Rename</h1><p>파일을 열별로 배치하고 같은 행에 사용할 이름을 구성하세요.</p></div><div><button id="help">Guide</button> <button id="version">v0.7</button></div></header>
+<header><div><h1>Parallel Rename</h1><p>파일을 열별로 배치하고 같은 행에 사용할 이름을 구성하세요.</p></div><div><button id="help">Guide</button> <button id="version">v0.8</button></div></header>
 <main>
 <fieldset id="workspace">
 <div class="toolbar"><div class="toolgroup preview"><span class="grouplabel">이름 구성 미리보기</span><p id="formula"></p></div>
@@ -131,7 +132,7 @@ header,main{padding:0}header{display:flex;justify-content:space-between;gap:12px
 </div>
 <div class="dlg-foot"><button id="cancelFix">취소</button><button id="commitFix" class="primary">교정 반영</button></div>
 </dialog>
-<dialog id="helpBox"><div class="dlg-head"><h2>사용 가이드</h2><form method="dialog"><button>닫기</button></form></div><div class="dlg-body"><h3>파일 세트 가져오기</h3><p>파일을 창에 놓으세요. 두 번째 세트부터 추가를 누르면 새 파일 열이 생깁니다. 바꾸기는 기존 파일 열 전체를 교체합니다.</p><h3>열 순서와 실행 취소</h3><p>열 제목을 드래그해 순서를 바꾸고, 더블클릭해 이름을 바꾸세요. 파일 열끼리, 이름 구성 열끼리 이동합니다. 되돌리기 ⌘/Ctrl+Z, 다시 실행 ⌘/Ctrl+Shift+Z를 지원합니다. 텍스트 입력 중에는 브라우저 기본 텍스트 실행 취소가 적용됩니다.</p><h3>선택과 편집</h3><p>클릭하거나 드래그해 셀을 선택하세요. 열 제목은 열 전체, 행 번호는 행 전체, 왼쪽 위는 표 전체를 선택합니다. ⌘/Ctrl+C는 선택한 값을 복사합니다. 이름 셀은 더블클릭 또는 Enter로 편집하고 Esc로 선택 상태에 돌아갑니다. 파일 순서 변경 중에는 파일을 드래그해 이동합니다.</p><h3>이름 구성과 저장</h3>
+<dialog id="helpBox"><div class="dlg-head"><h2>사용 가이드</h2><form method="dialog"><button>닫기</button></form></div><div class="dlg-body"><h3>파일 세트 가져오기</h3><p>파일을 창에 놓으세요. 두 번째 세트부터 추가를 누르면 새 파일 열이 생깁니다. 바꾸기는 기존 파일 열 전체를 교체합니다.</p><h3>열 순서와 실행 취소</h3><p>열 제목 옆 손잡이를 드래그해 순서를 바꾸고, 더블클릭해 이름을 바꾸세요. 파일 열끼리, 이름 구성 열끼리 이동합니다. 되돌리기 ⌘/Ctrl+Z, 다시 실행 ⌘/Ctrl+Shift+Z를 지원합니다. 텍스트 입력 중에는 브라우저 기본 텍스트 실행 취소가 적용됩니다.</p><h3>선택과 편집</h3><p>클릭하거나 드래그해 셀을 선택하세요. 열 제목은 열 전체, 행 번호는 행 전체, 왼쪽 위는 표 전체를 선택합니다. ⌘/Ctrl+C는 선택한 값을 복사합니다. 이름 셀은 더블클릭 또는 Enter로 편집하고 Esc로 선택 상태에 돌아갑니다. 파일 순서 변경 중에는 파일을 드래그해 이동합니다.</p><h3>이름 구성과 저장</h3>
 <p>파일을 가져온 순서는 브라우저가 전달한 순서입니다. 각 파일 열의 순서를 직접 확인하세요. 순서 변경 모드에서는 개별 파일을 목록에서 뺄 수 있습니다.</p>
 <p>Tab은 오른쪽 이름 셀, Enter는 아래 이름 셀로 이동합니다. Shift+Tab은 왼쪽으로 이동합니다. Shift+Enter는 줄바꿈입니다. 이름 셀을 선택하고 엑셀 범위를 붙여넣으세요. 고정 열을 건너뛰며 따옴표로 감싼 셀의 탭과 줄바꿈을 보존합니다. 범위가 부족하면 행이나 이름 열을 먼저 추가하세요.</p>
 <p>마지막 점부터 확장자를 보존합니다. .env는 확장자가 없는 이름으로 취급합니다. 자동 교정에서 ␣는 공백, ⇥는 탭, ↵는 줄바꿈을 나타냅니다.</p>
@@ -139,7 +140,7 @@ header,main{padding:0}header{display:flex;justify-content:space-between;gap:12px
 <p>저장할 파일의 용량·개수에 도구가 정한 상한은 없습니다. 폴더 저장은 파일을 하나씩 스트리밍하며, 파일별 다운로드는 각 원본 파일을 새 이름으로 브라우저에 전달합니다. 여러 다운로드가 차단되면 브라우저에서 허용하세요.</p>
 <p>텍스트는 UTF-8로 읽고 줄바꿈을 LF로 통일합니다. 공백 제외 수치는 탭과 줄바꿈도 제외합니다. 오디오는 브라우저가 읽은 재생 시간을 초 단위로 내립니다. PNG·JPEG·GIF의 픽셀 크기, PNG pHYs·JPEG JFIF의 물리 해상도를 읽습니다. 다른 해상도 메타데이터는 확인 불가로 표시합니다.</p>
 <p>페이지를 닫으면 작업이 종료됩니다.</p>
-</div></dialog><dialog id="versions"><div class="dlg-body"><h2>v0.7</h2><p>매트릭스 범위 선택·복사, 더블클릭 편집, 사용 가이드 추가</p><form method="dialog"><button>닫기</button></form></div></dialog><script>
+</div></dialog><dialog id="versions"><div class="dlg-body"><h2>v0.8</h2><p>열 이동 손잡이와 삽입선, 순서 열 맨 앞 추가, 원본·결과 열 색상 구분</p><form method="dialog"><button>닫기</button></form></div></dialog><script>
 'use strict';
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => (
@@ -394,15 +395,16 @@ function render() {
   $('order').textContent = '순서 변경: ' + (ordering ? '켜짐' : '꺼짐');
   $('order').setAttribute('aria-pressed', String(ordering));
   $('orderHint').hidden = !ordering;
+  const grip = '<span class="grip" draggable="true" title="드래그하여 열 이동">⠿</span> ';
   const header = ['<th class="num" scope="col">행</th>'];
   for (const lane of lanes) {
-    header.push('<th scope="col" draggable="true" data-lane-head="' + lane.id + '">' + esc(lane.name) + '<div class="tools">' +
+    header.push('<th scope="col" data-lane-head="' + lane.id + '">' + grip + esc(lane.name) + '<div class="tools">' +
       button('choose',lane.id,'파일 가져오기') + button('renameLane',lane.id,'헤더명') + button('removeLane',lane.id,'열 제거') + '</div>' +
       '<div class="drop" data-drop="' + lane.id + '">여기에 파일 드롭</div></th>');
   }
   cols.forEach((c,i) => {
     const fixed = c.type === 'fixed';
-    header.push('<th scope="col" draggable="true" data-name-head="' + c.id + '"' + (fixed ? ' class="fixed"' : '') + '>' + esc(c.name) +
+    header.push('<th scope="col" data-name-head="' + c.id + '"' + (fixed ? ' class="fixed"' : '') + '>' + grip + esc(c.name) +
       '<details><summary>열 설정</summary><div class="tools">' + button('left',c.id,'←',i === 0) +
       button('right',c.id,'→',i === cols.length - 1) + button('renameCol',c.id,'열 이름') +
       (fixed ? button('editFixed',c.id,'값') : '') + button('removeCol',c.id,'제거') + '</div></details></th>');
@@ -612,7 +614,7 @@ function setupMatrix() {
           do { name = labelForLane(nextLane++); } while (lanes.some(l => l.name.toLowerCase() === name.toLowerCase()));
           lanes.push(fileLane(name)); break;
         }
-        case 'addNumber': cols.push({id:++nextId,type:'number',name:'순서'}); break;
+        case 'addNumber': cols.unshift({id:++nextId,type:'number',name:'순서'}); break;
         case 'addText': cols.push(textColumn('이름 ' + (cols.filter(c => c.type === 'text').length + 1))); break;
         case 'custom': {
           const value = prompt('고정 구분자를 입력하세요.');
@@ -1158,29 +1160,44 @@ document.addEventListener('keydown',e=>{
   e.preventDefault();restoreHistory(e.shiftKey?1:-1);
 });
 let movingHeader=null;
+function clearMarker(){
+  document.querySelectorAll('#grid [data-insert]').forEach(head=>head.removeAttribute('data-insert'));
+}
+function insertion(event){
+  const head=event.target.closest(movingHeader.kind==='lane'?'[data-lane-head]':'[data-name-head]');
+  if(!head)return null;
+  const rect=head.getBoundingClientRect();
+  return {head,after:event.clientX>=rect.left+rect.width/2};
+}
 $('grid').addEventListener('dragstart',e=>{
   const head=e.target.closest('[data-lane-head],[data-name-head]');
-  if(!head || e.target.closest('button,details,.drop') || busy)return;
+  if(!head || !e.target.closest('.grip') || busy)return;
   movingHeader={kind:head.dataset.laneHead?'lane':'name',id:Number(head.dataset.laneHead||head.dataset.nameHead)};
   e.stopImmediatePropagation();e.dataTransfer.setData('text/plain',String(movingHeader.id));e.dataTransfer.effectAllowed='move';
 },true);
 $('grid').addEventListener('dragover',e=>{
   if(!movingHeader)return;
+  clearMarker();
+  const position=insertion(e);
+  if(position)position.head.dataset.insert=position.after?'after':'before';
+  e.dataTransfer.dropEffect=position?'move':'none';
   e.preventDefault();e.stopImmediatePropagation();
 },true);
 $('grid').addEventListener('drop',e=>{
   if(!movingHeader)return;
   e.preventDefault();e.stopImmediatePropagation();
-  const target=e.target.closest(movingHeader.kind==='lane'?'[data-lane-head]':'[data-name-head]');
+  clearMarker();
+  const position=insertion(e);
+  const target=position?.head;
   if(target){
     const list=movingHeader.kind==='lane'?lanes:cols;
     const targetId=Number(target.dataset.laneHead||target.dataset.nameHead);
     const from=list.findIndex(c=>c.id===movingHeader.id),to=list.findIndex(c=>c.id===targetId);
-    if(from>=0 && to>=0){const [item]=list.splice(from,1);list.splice(to,0,item);dirty=true;render();}
+    if(from>=0 && to>=0 && from!==to){const [item]=list.splice(from,1);list.splice(to+Number(position.after)-Number(from<to),0,item);dirty=true;render();}
   }
   movingHeader=null;
 },true);
-$('grid').addEventListener('dragend',()=>movingHeader=null);
+$('grid').addEventListener('dragend',()=>{clearMarker();movingHeader=null;});
 const table = $('grid');
 table.tabIndex = 0;
 let anchor, focusCell, sweeping = false;
@@ -1206,6 +1223,7 @@ function mark(start,end) {
 }
 table.onmousedown=e=>{
   const cell=e.target.closest('td,th');
+  if(e.target.closest('.grip'))return;
   if(!cell || e.button!==0 || e.target.closest('button,details,.drop,textarea:not([readonly])') || (ordering && e.target.closest('[data-slot]'))) return;
   const [r,c]=point(cell), last=table.rows.length-1, width=table.rows[0].cells.length-1;
   if(!r || !c) mark([r||1,c||1],[r||last,c||width]);
@@ -1223,7 +1241,7 @@ function editCell(cell) {
 }
 table.ondblclick=e=>{
   const head=e.target.closest('[data-lane-head],[data-name-head]');
-  if(head && !e.target.closest('button,details,.drop')){
+  if(head && !e.target.closest('button,details,.drop,.grip')){
     matrixAction(head.dataset.laneHead?'renameLane':'renameCol',head.dataset.laneHead||head.dataset.nameHead);
   }else editCell(e.target.closest('td'));
 };
